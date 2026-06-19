@@ -3,43 +3,73 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Site Ledger</title>
+    <title>H&amp;H SPACES</title>
     <link rel="stylesheet" href="styles.css">
   </head>
-  <body>
+  <body class="app-locked">
+    <section class="auth-screen" id="authScreen">
+      <div class="auth-card">
+        <div class="auth-brand">
+          <div class="brand-mark">ST</div>
+          <div>
+            <h1>H&amp;H SPACES</h1>
+            <p id="authModeText">Login to continue</p>
+          </div>
+        </div>
+        <form id="authForm" class="auth-form">
+          <label>Username<input id="authUser" autocomplete="username" required placeholder="SAHIL123 or ARBAZ123"></label>
+          <label>Password<input id="authPass" type="password" autocomplete="current-password" required placeholder="Password"></label>
+          <label id="confirmPassWrap" class="is-hidden">Confirm password<input id="authPassConfirm" type="password" autocomplete="new-password" placeholder="Confirm password"></label>
+          <button class="primary-btn" id="authSubmit" type="submit">Login</button>
+          <p class="auth-message" id="authMessage"></p>
+        </form>
+      </div>
+    </section>
+
     <div class="app-shell">
       <aside class="sidebar">
         <div class="brand">
           <div class="brand-mark">SL</div>
           <div>
-            <h1>Site Ledger</h1>
-            <p>Work, wages, material, payments</p>
+            <h1>H&amp;H SPACES</h1>
+            <p>Site accounts and progress</p>
           </div>
         </div>
 
         <nav class="nav" aria-label="Main navigation">
           <button class="nav-item active" data-view="dashboard" type="button">Dashboard</button>
+          <button class="nav-item" data-view="capital" type="button">Company Capital</button>
           <button class="nav-item" data-view="sites" type="button">Sites & Clients</button>
+          <button class="nav-item" data-view="extraWorks" type="button">Extra Works</button>
           <button class="nav-item" data-view="wages" type="button">Labour Wages</button>
           <button class="nav-item" data-view="materials" type="button">Material Expenses</button>
           <button class="nav-item" data-view="payments" type="button">Client Payments</button>
           <button class="nav-item" data-view="bills" type="button">Pending Bills</button>
+          <button class="nav-item" data-view="schedule" type="button">Schedule & Targets</button>
           <button class="nav-item" data-view="progress" type="button">Work Progress</button>
           <button class="nav-item" data-view="updates" type="button">Daily Updates</button>
         </nav>
 
         <div class="sidebar-actions">
           <button class="secondary-btn" id="exportCsv" type="button">Export CSV</button>
-          <button class="secondary-btn" id="printReport" type="button">Print Report</button>
+          <button class="secondary-btn" id="exportWord" type="button">Word Report</button>
+          <button class="secondary-btn" id="exportExcel" type="button">Excel Report</button>
+          <button class="secondary-btn" id="exportPdf" type="button">PDF Report</button>
+          <button class="secondary-btn" id="lockApp" type="button">Lock App</button>
           <button class="danger-btn" id="resetDemo" type="button">Clear Data</button>
         </div>
       </aside>
 
       <main class="main">
-        <header class="topbar">
-          <div>
-            <p class="eyebrow">Construction account system</p>
+        <header class="topbar app-header">
+          <div class="app-title-block">
+            <p class="eyebrow">H&amp;H SPACES</p>
             <h2 id="viewTitle">Dashboard</h2>
+            <time id="todayLabel">Today</time>
+          </div>
+          <div class="header-actions">
+            <button class="add-site-btn nav-jump" data-view="sites" type="button">+ Site</button>
+            <button class="lock-btn" id="lockAppTop" type="button">Lock</button>
           </div>
           <div class="topbar-controls">
             <label>
@@ -54,24 +84,115 @@
         </header>
 
         <section class="view active" id="dashboard">
+          <div class="selected-site-line" id="selectedSiteLine">All sites</div>
+
+          <section class="expenditure-card">
+            <div>
+              <span>Total Site Expenditure</span>
+              <strong id="metricSiteSpend">0</strong>
+            </div>
+            <div class="expenditure-split">
+              <div>
+                <small>Labour</small>
+                <b id="metricSpendLabour">0</b>
+              </div>
+              <div>
+                <small>Materials</small>
+                <b id="metricSpendMaterials">0</b>
+              </div>
+            </div>
+          </section>
+
+          <section class="quick-actions">
+            <h3>Quick Actions</h3>
+            <div class="quick-action-grid">
+              <button class="quick-action nav-jump" data-view="capital" type="button">
+                <span class="quick-icon capital-icon"></span>
+                <b>Capital</b>
+              </button>
+              <button class="quick-action nav-jump" data-view="payments" type="button">
+                <span class="quick-icon payment-icon"></span>
+                <b>Payment</b>
+              </button>
+              <button class="quick-action nav-jump" data-view="bills" type="button">
+                <span class="quick-icon bill-icon"></span>
+                <b>Bills</b>
+              </button>
+              <button class="quick-action nav-jump" data-view="sites" type="button">
+                <span class="quick-icon site-icon"></span>
+                <b>Sites</b>
+              </button>
+            </div>
+          </section>
+
+          <section class="today-block">
+            <h3>Today</h3>
+            <div class="today-grid">
+              <article class="today-card labour-card">
+                <span>Labour</span>
+                <strong id="metricTodayLabour">0</strong>
+                <small id="metricTodayWorkers">0 workers</small>
+              </article>
+              <article class="today-card material-card">
+                <span>Materials</span>
+                <strong id="metricTodayMaterials">0</strong>
+                <small id="metricTodayItems">0 items</small>
+              </article>
+            </div>
+          </section>
+
           <div class="metric-grid">
-            <article class="metric">
-              <span>Total Wages</span>
-              <strong id="metricWages">0</strong>
+            <article class="metric primary-metric">
+              <span>Cash In Hand</span>
+              <strong id="metricCash">0</strong>
+              <small>Capital + received - used</small>
             </article>
             <article class="metric">
-              <span>Material Expenses</span>
-              <strong id="metricMaterials">0</strong>
+              <span>Company Capital</span>
+              <strong id="metricCapital">0</strong>
+              <small>Added minus withdrawn</small>
             </article>
             <article class="metric">
               <span>Client Payments</span>
               <strong id="metricPayments">0</strong>
+              <small>Received from clients</small>
+            </article>
+            <article class="metric">
+              <span>Extra Site Works</span>
+              <strong id="metricExtraWorks">0</strong>
+              <small>Added to site amount</small>
+            </article>
+            <article class="metric warning">
+              <span>Payment Used</span>
+              <strong id="metricUsed">0</strong>
+              <small>Wages + material + paid bills</small>
             </article>
             <article class="metric urgent">
-              <span>Pending Bills</span>
+              <span>Pending Payment</span>
               <strong id="metricBills">0</strong>
+              <small>Unpaid bills</small>
+            </article>
+            <article class="metric">
+              <span>Material Expenses</span>
+              <strong id="metricMaterials">0</strong>
+              <small>Selected month/site</small>
+            </article>
+            <article class="metric">
+              <span>Labour Wages</span>
+              <strong id="metricWages">0</strong>
+              <small>Selected month/site</small>
+            </article>
+            <article class="metric">
+              <span>Client Balance</span>
+              <strong id="metricClientPending">0</strong>
+              <small>Total site amount minus received</small>
             </article>
           </div>
+
+          <section class="empty-dashboard-card" id="todayEmptyCard">
+            <strong>Daily activity</strong>
+            <p>No entries for today yet. Use the tabs below to add labour, materials, progress, or updates.</p>
+          </section>
 
           <div class="content-grid">
             <section class="panel">
@@ -95,11 +216,40 @@
 
             <section class="panel">
               <div class="panel-header">
+                <h3>Upcoming Targets</h3>
+              </div>
+              <div class="activity-list" id="targetRows"></div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-header">
                 <h3>Latest Daily Updates</h3>
               </div>
               <div class="activity-list" id="latestUpdates"></div>
             </section>
           </div>
+        </section>
+
+        <section class="view" id="capital">
+          <section class="form-panel">
+            <h3>Add Company Capital</h3>
+            <form id="capitalForm" class="entry-form">
+              <label>Date<input name="date" type="date" required></label>
+              <label>Type
+                <select name="type">
+                  <option value="add">Add Capital</option>
+                  <option value="withdraw">Withdraw Capital</option>
+                </select>
+              </label>
+              <label>Source / note<input name="source" required placeholder="Owner, bank, cash, partner"></label>
+              <label>Amount<input name="amount" type="number" min="0" step="1" required></label>
+              <button class="primary-btn" type="submit">Save Capital</button>
+            </form>
+          </section>
+          <section class="panel">
+            <div class="panel-header"><h3>Capital Entries</h3></div>
+            <div class="table-wrap"><table><thead><tr><th>Date</th><th>Type</th><th>Source / Note</th><th>Amount</th><th></th></tr></thead><tbody id="capitalRows"></tbody></table></div>
+          </section>
         </section>
 
         <section class="view" id="sites">
@@ -124,26 +274,54 @@
           </section>
           <section class="panel">
             <div class="panel-header"><h3>All Sites</h3></div>
-            <div class="table-wrap"><table><thead><tr><th>Site</th><th>Client</th><th>Phone</th><th>Contract</th><th>Status</th><th></th></tr></thead><tbody id="siteRows"></tbody></table></div>
+            <div class="table-wrap"><table><thead><tr><th>Site</th><th>Client</th><th>Phone</th><th>Contract</th><th>Extra Work</th><th>Total Amount</th><th>Status</th><th></th></tr></thead><tbody id="siteRows"></tbody></table></div>
+          </section>
+        </section>
+
+        <section class="view" id="extraWorks">
+          <section class="form-panel">
+            <h3>Add Extra Site Work</h3>
+            <form id="extraWorkForm" class="entry-form">
+              <label>Date<input name="date" type="date" required></label>
+              <label>Site<select name="siteId" required></select></label>
+              <label>Work name<input name="work" required placeholder="Extra slab, boundary, waterproofing"></label>
+              <label>Approved by<input name="approvedBy" placeholder="Client / owner name"></label>
+              <label>Amount<input name="amount" type="number" min="0" step="1" required></label>
+              <label class="full">Note<textarea name="note" placeholder="Details of extra work"></textarea></label>
+              <button class="primary-btn" type="submit">Add Extra Work</button>
+            </form>
+          </section>
+          <section class="panel">
+            <div class="panel-header"><h3>Extra Works Register</h3></div>
+            <div class="table-wrap"><table><thead><tr><th>Date</th><th>Site</th><th>Work</th><th>Approved By</th><th>Amount</th><th></th></tr></thead><tbody id="extraWorkRows"></tbody></table></div>
           </section>
         </section>
 
         <section class="view" id="wages">
           <section class="form-panel">
-            <h3>Add Labour Wages</h3>
+            <h3>Daily Labour Attendance & Wages</h3>
             <form id="wageForm" class="entry-form">
               <label>Date<input name="date" type="date" required></label>
               <label>Site<select name="siteId" required></select></label>
-              <label>Labour / team<input name="worker" required placeholder="Name or team"></label>
+              <label>Labour photo<input name="photo" type="file" accept="image/*"></label>
+              <label>Labour name<input name="worker" required placeholder="Labour name"></label>
+              <label>Mobile number<input name="phone" inputmode="tel" placeholder="Phone number"></label>
               <label>Work type<input name="workType" placeholder="Mason, helper, plaster"></label>
+              <label>Attendance
+                <select name="attendance">
+                  <option value="Present">Present</option>
+                  <option value="Half day">Half day</option>
+                  <option value="Absent">Absent</option>
+                </select>
+              </label>
               <label>Days<input name="days" type="number" min="0" step="0.5" value="1"></label>
               <label>Rate<input name="rate" type="number" min="0" step="1" required></label>
               <button class="primary-btn" type="submit">Add Wage</button>
             </form>
           </section>
           <section class="panel">
-            <div class="panel-header"><h3>Wage Entries</h3></div>
-            <div class="table-wrap"><table><thead><tr><th>Date</th><th>Site</th><th>Labour</th><th>Work</th><th>Days</th><th>Amount</th><th></th></tr></thead><tbody id="wageRows"></tbody></table></div>
+            <div class="panel-header"><h3>Daily Labour Register</h3></div>
+            <div class="table-wrap"><table><thead><tr><th>Date</th><th>Site</th><th>Labour</th><th>Mobile</th><th>Attendance</th><th>Work</th><th>Days</th><th>Amount</th><th></th></tr></thead><tbody id="wageRows"></tbody></table></div>
           </section>
         </section>
 
@@ -222,6 +400,34 @@
           </section>
         </section>
 
+        <section class="view" id="schedule">
+          <section class="form-panel">
+            <h3>Add Work Schedule & Target</h3>
+            <form id="scheduleForm" class="entry-form">
+              <label>Plan date<input name="date" type="date" required></label>
+              <label>Target date<input name="targetDate" type="date" required></label>
+              <label>Site<select name="siteId" required></select></label>
+              <label>Work / task<input name="task" required placeholder="Slab, plaster, plumbing"></label>
+              <label>Target %<input name="targetPercent" type="number" min="0" max="100" step="1" placeholder="100"></label>
+              <label>Assigned to<input name="assignedTo" placeholder="Team or person"></label>
+              <label>Status
+                <select name="status">
+                  <option>Planned</option>
+                  <option>In Progress</option>
+                  <option>Delayed</option>
+                  <option>Done</option>
+                </select>
+              </label>
+              <label class="full">Notes<textarea name="notes" placeholder="Target details, material needed, instructions"></textarea></label>
+              <button class="primary-btn" type="submit">Save Target</button>
+            </form>
+          </section>
+          <section class="panel">
+            <div class="panel-header"><h3>Schedule & Target List</h3></div>
+            <div class="table-wrap"><table><thead><tr><th>Plan</th><th>Target</th><th>Site</th><th>Work</th><th>Target</th><th>Assigned</th><th>Status</th><th></th></tr></thead><tbody id="scheduleRows"></tbody></table></div>
+          </section>
+        </section>
+
         <section class="view" id="updates">
           <section class="form-panel">
             <h3>Add Daily Update</h3>
@@ -230,6 +436,7 @@
               <label>Site<select name="siteId" required></select></label>
               <label>Labour count<input name="labourCount" type="number" min="0" step="1" placeholder="0"></label>
               <label>Weather<input name="weather" placeholder="Clear / rain / delay"></label>
+              <label class="full">Site photos<input name="photos" type="file" accept="image/*" multiple></label>
               <label class="full">Today work<textarea name="workDone" required placeholder="What work was completed today"></textarea></label>
               <label class="full">Tomorrow plan<textarea name="nextPlan" placeholder="Next work plan"></textarea></label>
               <button class="primary-btn" type="submit">Add Update</button>
@@ -241,7 +448,38 @@
           </section>
         </section>
       </main>
+
+      <section class="voice-panel" id="voicePanel" aria-label="Voice entry">
+        <button class="voice-button" id="voiceButton" type="button" aria-label="Start voice input">🎙</button>
+        <div>
+          <strong id="voiceTitle">Voice Entry</strong>
+          <p id="voiceStatus">Tap any field, press mic, then speak. You can also say: labour name Ramesh rate 700.</p>
+        </div>
+      </section>
+
+      <nav class="bottom-nav" aria-label="Mobile navigation">
+        <button class="nav-item active" data-view="dashboard" type="button"><span>Home</span></button>
+        <button class="nav-item" data-view="wages" type="button"><span>Labour</span></button>
+        <button class="nav-item" data-view="materials" type="button"><span>Materials</span></button>
+        <button class="nav-item" data-view="extraWorks" type="button"><span>Extra</span></button>
+        <button class="nav-item" data-view="schedule" type="button"><span>Targets</span></button>
+        <button class="nav-item" data-view="updates" type="button"><span>History</span></button>
+      </nav>
     </div>
+
+    <section class="report-modal is-hidden" id="reportModal" aria-label="Report preview">
+      <div class="report-modal__bar">
+        <div>
+          <strong>Report Preview</strong>
+          <span>Print or save as PDF</span>
+        </div>
+        <div class="report-modal__actions">
+          <button class="primary-btn" id="printReport" type="button">Print / Save PDF</button>
+          <button class="secondary-light-btn" id="closeReport" type="button">Close</button>
+        </div>
+      </div>
+      <iframe id="reportFrame" title="H&amp;H SPACES report preview"></iframe>
+    </section>
 
     <template id="emptyState">
       <tr><td colspan="8" class="empty">No records yet.</td></tr>

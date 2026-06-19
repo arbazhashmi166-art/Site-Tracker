@@ -1,10 +1,11 @@
-# Site Ledger
+# H&H SPACES
 
-A simple browser-based construction site ledger for:
+A simple browser-based construction site tracker for:
 
 - Labour wages
 - Material expenses
 - Client payments
+- Company capital
 - Work progress
 - Pending payment bills
 - Daily updates
@@ -14,7 +15,16 @@ A simple browser-based construction site ledger for:
 
 Open `index.html` in a browser. The system saves data in that browser using local storage.
 
-Use `Sites & Clients` first to add at least one site. After that, you can add wages, materials, payments, bills, progress, and daily updates for each site.
+Use `Company Capital` to add owner/company money first. Use `Sites & Clients` to add at least one site. After that, you can add wages, materials, payments, bills, progress, and daily updates for each site.
+
+The dashboard shows:
+
+- Cash in hand
+- Company capital
+- Client payments received
+- Payment used
+- Pending payment bills
+- Client balance
 
 ## Use on Phone With GitHub Pages
 
