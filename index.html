@@ -1109,6 +1109,11 @@
                 </select>
               </label>
 
+              <div class="settings-section full-row">
+                <h4>AI Assistant Settings</h4>
+              </div>
+              <label class="full">OpenAI API key<input name="openAiApiKey" type="password" placeholder="Optional. Leave blank to use offline assistant only."></label>
+
               <button class="primary-btn" type="submit">Save Settings</button>
             </form>
           </section>
@@ -1119,11 +1124,47 @@
         <button class="nav-item active" data-view="dashboard" type="button"><span>Home</span></button>
         <button class="nav-item" data-view="wages" type="button"><span>Labour</span></button>
         <button class="nav-item" data-view="materials" type="button"><span>Materials</span></button>
-        <button class="nav-item" data-view="extraWorks" type="button"><span>Extra</span></button>
-        <button class="nav-item" data-view="schedule" type="button"><span>Targets</span></button>
-        <button class="nav-item" data-view="updates" type="button"><span>History</span></button>
+        <button class="nav-item" data-view="customerBills" type="button"><span>Bills</span></button>
+        <button class="nav-item" data-view="tools" type="button"><span>Tools</span></button>
       </nav>
     </div>
+
+    <button class="ai-fab" id="openAiAssistant" type="button"><span>Ask AI</span></button>
+
+    <section class="ai-drawer is-hidden" id="aiDrawer" aria-label="AI assistant">
+      <div class="ai-panel">
+        <header class="ai-header">
+          <div>
+            <strong>Ask AI</strong>
+            <span>Site manager, reports, calculators and quick entry</span>
+          </div>
+          <button class="secondary-light-btn" id="closeAiAssistant" type="button">Close</button>
+        </header>
+        <div class="ai-quick-actions" aria-label="AI quick actions">
+          <button type="button" data-ai-prompt="Generate daily report">Daily Report</button>
+          <button type="button" data-ai-prompt="Add expense">Add Expense</button>
+          <button type="button" data-ai-prompt="Add material">Add Material</button>
+          <button type="button" data-ai-prompt="Add attendance">Add Attendance</button>
+          <button type="button" data-ai-prompt="Generate quote">Generate Quote</button>
+          <button type="button" data-ai-prompt="How much payment is pending?">Pending Payments</button>
+          <button type="button" data-ai-prompt="What material stock is low?">Low Stock</button>
+        </div>
+        <div class="ai-suggestions">
+          <button type="button" data-ai-prompt="What should I focus on today?">What should I focus on today?</button>
+          <button type="button" data-ai-prompt="How much profit this month?">How much profit this month?</button>
+          <button type="button" data-ai-prompt="Calculate plaster for wall 20x10 ft.">Calculate plaster 20x10 ft</button>
+          <button type="button" data-ai-prompt="Bought 50 cement bags for ₹22000.">Bought 50 cement bags</button>
+        </div>
+        <div class="ai-chat" id="aiChat"></div>
+        <div class="ai-preview is-hidden" id="aiPreview"></div>
+        <form class="ai-composer" id="aiForm">
+          <button class="secondary-light-btn" id="aiVoiceInput" type="button">Voice</button>
+          <input id="aiInput" autocomplete="off" placeholder="Ask about payments, profit, stock, or say an entry">
+          <button class="secondary-light-btn" id="aiSpeakLast" type="button">Speak</button>
+          <button class="primary-btn" type="submit">Send</button>
+        </form>
+      </div>
+    </section>
 
     <section class="report-modal is-hidden" id="reportModal" aria-label="Report preview">
       <div class="report-modal__bar">
@@ -1132,7 +1173,7 @@
           <span>Print or save as PDF</span>
         </div>
         <div class="report-modal__actions">
-          <button class="primary-btn" id="printReport" type="button">Print / Save PDF</button>
+          <button class="primary-btn" id="printReport" type="button">Open Print / Save PDF</button>
           <button class="secondary-light-btn" id="closeReport" type="button">Close</button>
         </div>
       </div>

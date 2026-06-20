@@ -3,6 +3,8 @@ const SESSION_KEY = "site-tracker-session-v1";
 const REMEMBERED_LOGIN_KEY = "hh-spaces-remembered-login-v1";
 const THEME_KEY = "hh-spaces-theme-v1";
 const SUPABASE_CONFIG_KEY = "hh-spaces-supabase-config-v1";
+const AI_CHAT_KEY = "hh-spaces-ai-chat-v1";
+const OPENAI_KEY = "hh-spaces-openai-key-v1";
 const CLOUD_TABLE = "hh_spaces_app_state";
 const CLOUD_ROW_ID = "main";
 const ALLOWED_USERS = [
@@ -21,6 +23,10 @@ const today = new Date().toISOString().slice(0, 10);
 const currentMonth = today.slice(0, 7);
 let supabaseClient = null;
 let cloudSaveTimer = null;
+let currentPrintableHtml = "";
+let currentPrintableTitle = "H&H SPACES Report";
+let pendingAiEntry = null;
+let speechRecognizer = null;
 
 const views = {
   dashboard: "Dashboard",
@@ -58,6 +64,8 @@ document.addEventListener("DOMContentLoaded", () => {
   bindSearch();
   bindForms();
   bindToolCalculators();
+  bindAiAssistant();
+  setupSettingsAccordions();
   bindActions();
   bindCloudSync();
   initSupabaseClient();
@@ -575,6 +583,8 @@ function bindForms() {
     });
     nextSettings.logo = logoFile ? await fileToDataUrl(logoFile) : state.settings.logo || "";
     nextSettings.signature = signatureFile ? await fileToDataUrl(signatureFile) : state.settings.signature || "";
+    if (data.openAiApiKey) localStorage.setItem(OPENAI_KEY, data.openAiApiKey);
+    delete nextSettings.openAiApiKey;
     state.settings = nextSettings;
     applySettingsPreferences();
   });
@@ -701,6 +711,174 @@ function bindToolCalculators() {
   renderToolCalculators();
 }
 
+function setupSettingsAccordions() {
+  const form = document.getElementById("settingsForm");
+  if (!form || form.dataset.compactReady) return;
+  form.dataset.compactReady = "1";
+  const sections = Array.from(form.querySelectorAll(".settings-section"));
+  sections.forEach((section, index) => {
+    const title = section.querySelector("h4")?.textContent || "Settings";
+    const group = document.createElement("section");
+    group.className = `settings-group full-row${index === 0 ? " is-open" : ""}`;
+    const header = document.createElement("button");
+    header.type = "button";
+    header.className = "settings-group__header";
+    header.innerHTML = `<span>${escapeHtml(title)}</span><b>${index === 0 ? "Close" : "Open"}</b>`;
+    const body = document.createElement("div");
+    body.className = "settings-group__body";
+    section.replaceWith(group);
+    group.append(header, body);
+    let next = group.nextElementSibling;
+    while (next && !next.classList.contains("settings-section")) {
+      const current = next;
+      next = next.nextElementSibling;
+      body.appendChild(current);
+    }
+    header.addEventListener("click", () => {
+      const open = group.classList.toggle("is-open");
+      header.querySelector("b").textContent = open ? "Close" : "Open";
+    });
+  });
+  const submit = form.querySelector('button[type="submit"]');
+  if (submit) {
+    submit.classList.add("settings-save-btn", "full-row");
+    form.appendChild(submit);
+  }
+}
+
+
+function bindAiAssistant() {
+  document.getElementById("openAiAssistant")?.addEventListener("click", openAiAssistant);
+  document.getElementById("closeAiAssistant")?.addEventListener("click", closeAiAssistant);
+  document.getElementById("aiForm")?.addEventListener("submit", handleAiSubmit);
+  document.getElementById("aiVoiceInput")?.addEventListener("click", startAiVoiceInput);
+  document.getElementById("aiSpeakLast")?.addEventListener("click", speakLastAiAnswer);
+  document.querySelectorAll("[data-ai-prompt]").forEach((button) => {
+    button.addEventListener("click", () => {
+      document.getElementById("aiInput").value = button.dataset.aiPrompt;
+      submitAiPrompt(button.dataset.aiPrompt);
+    });
+  });
+  document.getElementById("aiPreview")?.addEventListener("click", handleAiPreviewAction);
+  renderAiChat();
+}
+
+function openAiAssistant() {
+  document.getElementById("aiDrawer").classList.remove("is-hidden");
+  renderAiChat();
+  setTimeout(() => document.getElementById("aiInput")?.focus(), 80);
+}
+
+function closeAiAssistant() {
+  document.getElementById("aiDrawer").classList.add("is-hidden");
+}
+
+function handleAiSubmit(event) {
+  event.preventDefault();
+  const input = document.getElementById("aiInput");
+  const prompt = input.value.trim();
+  if (!prompt) return;
+  input.value = "";
+  submitAiPrompt(prompt);
+}
+
+async function submitAiPrompt(prompt) {
+  addAiMessage("user", prompt);
+  renderAiTyping();
+  const response = await generateAiResponse(prompt);
+  removeAiTyping();
+  addAiMessage("assistant", response.message);
+  if (response.preview) showAiPreview(response.preview);
+  else clearAiPreview();
+}
+
+function addAiMessage(role, text) {
+  const history = getAiHistory();
+  history.push({ role, text, time: new Date().toISOString() });
+  localStorage.setItem(AI_CHAT_KEY, JSON.stringify(history.slice(-80)));
+  renderAiChat();
+}
+
+function getAiHistory() {
+  try {
+    return JSON.parse(localStorage.getItem(AI_CHAT_KEY) || "[]");
+  } catch {
+    return [];
+  }
+}
+
+function renderAiChat() {
+  const chat = document.getElementById("aiChat");
+  if (!chat) return;
+  const history = getAiHistory();
+  chat.innerHTML = history.length
+    ? history.map((item) => `<article class="ai-message ${item.role}"><p>${escapeHtml(item.text)}</p></article>`).join("")
+    : `<article class="ai-message assistant"><p>Ask me about pending payment, profit, labour, low stock, reports, quotations, or construction calculations.</p></article>`;
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function renderAiTyping() {
+  const chat = document.getElementById("aiChat");
+  if (!chat) return;
+  chat.insertAdjacentHTML("beforeend", `<article class="ai-message assistant typing" id="aiTyping"><p>Thinking<span>.</span><span>.</span><span>.</span></p></article>`);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function removeAiTyping() {
+  document.getElementById("aiTyping")?.remove();
+}
+
+async function generateAiResponse(prompt) {
+  const lower = prompt.toLowerCase();
+  const local = localAiResponse(prompt, lower);
+  const openAiKey = localStorage.getItem(OPENAI_KEY);
+  if (!openAiKey || local.confident) return local;
+
+  try {
+    const remote = await askOpenAi(prompt, local.message, openAiKey);
+    return { message: remote || local.message };
+  } catch {
+    return local;
+  }
+}
+
+async function askOpenAi(prompt, fallback, key) {
+  const payload = {
+    model: "gpt-4o-mini",
+    messages: [
+      { role: "system", content: "You are a concise construction site management assistant. Use the provided app summary. Do not invent missing records." },
+      { role: "user", content: `${aiDataSummary()}\n\nQuestion: ${prompt}` }
+    ]
+  };
+  const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
+    body: JSON.stringify(payload)
+  });
+  if (!response.ok) return fallback;
+  const data = await response.json();
+  return data.choices?.[0]?.message?.content || fallback;
+}
+
+function localAiResponse(prompt, lower) {
+  const smartEntry = detectSmartEntry(prompt, lower);
+  if (smartEntry) return smartEntry;
+  if (lower.includes("focus") || lower.includes("today")) return { confident: true, message: aiTodayFocus() };
+  if (lower.includes("pending") || lower.includes("receivable") || lower.includes("balance due")) return { confident: true, message: aiPendingPayments() };
+  if (lower.includes("profit")) return { confident: true, message: aiProfitSummary(lower.includes("month")) };
+  if (lower.includes("expense")) return { confident: true, message: aiTodayExpenses() };
+  if (lower.includes("labour") || lower.includes("labor") || lower.includes("present")) return { confident: true, message: aiLabourSummary() };
+  if (lower.includes("low stock") || lower.includes("stock low") || lower.includes("material stock")) return { confident: true, message: aiLowStock() };
+  if (lower.includes("delayed")) return { confident: true, message: aiDelayedProjects() };
+  if (lower.includes("highest profit")) return { confident: true, message: aiHighestProfitSite() };
+  if (lower.includes("report")) return { confident: true, message: aiReportAction(lower) };
+  if (lower.includes("quote") || lower.includes("quotation")) return { confident: true, message: "Open Tools > Quotation Generator. Enter work type, area, labour rate, material rate, profit %, and GST %. I can also create a quotation preview if you type: quotation POP 1000 sqft labour 6 material 10." };
+  const construction = aiConstructionCalc(prompt, lower);
+  if (construction) return { confident: true, message: construction };
+  return { confident: false, message: `I can help with payments, profit, today's expenses, labour, low stock, delayed projects, reports, quotations and calculators. Try: "How much payment is pending?" or "Calculate plaster for wall 20x10 ft."` };
+}
+
+
 function renderToolCalculators() {
   const v = (key) => number(document.querySelector(`[data-calc="${key}"]`)?.value);
   const text = (key) => document.querySelector(`[data-calc="${key}"]`)?.value || "";
@@ -763,6 +941,263 @@ function renderToolCalculators() {
 
   const transportCost = (v("transportDistance") * v("vehicleRate")) + v("unloadingCharges");
   set("transportResult", transportCost ? `Material: <b>${escapeHtml(text("transportMaterial") || "-")}</b><br>Transport cost: <b>${formatMoney(transportCost)}</b><br>Labour required: <b>${v("transportLabour")}</b>` : "Enter transport details.");
+}
+
+function aiDataSummary() {
+  const report = buildReportData();
+  return JSON.stringify({
+    date: today,
+    summary: report.summary,
+    sites: report.sites.slice(0, 20),
+    materials: report.materials.slice(-30),
+    expenses: report.expenses.slice(-30),
+    payments: report.payments.slice(-30),
+    quotations: report.quotations.slice(-20)
+  });
+}
+
+function aiPendingPayments() {
+  const totalBilled = sum(state.customerBills, "total") + sum(state.extraWorks, "amount");
+  const received = sum(state.payments, "amount");
+  const pending = Math.max(totalBilled - received, 0);
+  return `Pending client payment is ${formatMoney(pending)}. Total billed is ${formatMoney(totalBilled)} and received payment is ${formatMoney(received)}.`;
+}
+
+function aiProfitSummary(monthOnly) {
+  const wages = monthOnly ? filtered(state.wages) : state.wages;
+  const materials = monthOnly ? filtered(state.materials) : state.materials;
+  const expenses = monthOnly ? filtered(state.expenses) : state.expenses;
+  const payments = monthOnly ? filtered(state.payments) : state.payments;
+  const cost = sum(wages, "amount") + sum(materials, "amount") + sum(expenses, "amount");
+  const revenue = sum(payments, "amount");
+  const profit = revenue - cost;
+  return `${monthOnly ? "This month" : "Overall"} revenue is ${formatMoney(revenue)}, cost is ${formatMoney(cost)}, and profit/loss is ${formatMoney(profit)}.`;
+}
+
+function aiTodayExpenses() {
+  const rows = [...state.wages, ...state.materials, ...state.expenses].filter((item) => item.date === today);
+  const total = sum(rows, "amount");
+  return rows.length
+    ? `Today's expenses are ${formatMoney(total)} from ${rows.length} entries.`
+    : "No expenses are recorded for today yet.";
+}
+
+function aiLabourSummary() {
+  const todayRows = state.wages.filter((item) => item.date === today);
+  const present = todayRows.filter((item) => item.attendance !== "Absent").length;
+  const cost = sum(todayRows, "amount");
+  return `Today ${present} labour entries are present/working. Today's labour cost is ${formatMoney(cost)}.`;
+}
+
+function aiLowStock() {
+  const lowLimit = number(state.settings.lowStockAlertQuantity || 10);
+  const low = state.materials.filter((item) => (number(item.quantityReceived) - number(item.quantityUsed)) <= lowLimit);
+  return low.length
+    ? `Low stock materials: ${low.slice(0, 8).map((item) => `${item.item} (${number(item.quantityReceived) - number(item.quantityUsed)} ${item.unit || ""})`).join(", ")}.`
+    : `No low stock material found under ${lowLimit} units.`;
+}
+
+function aiDelayedProjects() {
+  const delayed = state.schedule.filter((item) => item.status === "Delayed");
+  return delayed.length
+    ? `Delayed projects/tasks: ${delayed.slice(0, 8).map((item) => `${plainSiteName(item.siteId)} - ${item.task}`).join(", ")}.`
+    : "No delayed tasks are currently marked.";
+}
+
+function aiHighestProfitSite() {
+  const rows = state.sites.map((site) => {
+    const revenue = sum(state.payments.filter((item) => item.siteId === site.id), "amount");
+    const cost = sum(state.wages.filter((item) => item.siteId === site.id), "amount") + sum(state.materials.filter((item) => item.siteId === site.id), "amount") + sum(state.expenses.filter((item) => item.siteId === site.id), "amount");
+    return { site, profit: revenue - cost };
+  }).sort((a, b) => b.profit - a.profit);
+  return rows[0] ? `${rows[0].site.name} has the highest current profit: ${formatMoney(rows[0].profit)}.` : "Add sites and payments first to calculate highest profit.";
+}
+
+function aiTodayFocus() {
+  const actions = [];
+  const pending = sum(state.customerBills, "total") + sum(state.extraWorks, "amount") - sum(state.payments, "amount");
+  if (pending > 0) actions.push(`Collect pending payment: ${formatMoney(pending)}.`);
+  const lowStock = aiLowStock();
+  if (!lowStock.startsWith("No low")) actions.push(lowStock);
+  const delayed = state.schedule.filter((item) => item.status === "Delayed");
+  if (delayed.length) actions.push(`Review delayed work: ${delayed[0].task} at ${plainSiteName(delayed[0].siteId)}.`);
+  if (!state.wages.some((item) => item.date === today)) actions.push("Add today's labour attendance.");
+  return actions.length ? `Focus today:\n${actions.map((item, index) => `${index + 1}. ${item}`).join("\n")}` : "Today looks clear. Add daily update and review site photos.";
+}
+
+function aiReportAction(lower) {
+  if (lower.includes("daily")) return "Tap PDF Report for a full report, or use Daily Updates for site-wise daily notes and photos.";
+  if (lower.includes("labour")) return aiLabourSummary();
+  if (lower.includes("material")) return aiLowStock();
+  if (lower.includes("profit")) return aiProfitSummary(lower.includes("month"));
+  return "Reports available: Daily, Weekly, Monthly, Labour, Material, Expense, Client Billing and Profit. Tap PDF Report, Word Report, or Excel Report from the sidebar.";
+}
+
+function aiConstructionCalc(prompt, lower) {
+  const nums = (prompt.match(/\d+(\.\d+)?/g) || []).map(Number);
+  if (lower.includes("plaster") && nums.length >= 2) {
+    const area = nums[0] * nums[1];
+    const volume = area * (12 / 304.8);
+    return `Plaster area is ${round(area, 2)} sqft. Approx cement: ${round(volume * 0.18, 2)} bags. Approx sand: ${round(volume * 1.2, 2)} cft.`;
+  }
+  if (lower.includes("tile") && nums.length >= 1) {
+    const area = nums[0] * 1.1;
+    return `For ${nums[0]} sqft tiles with 10% wastage: order about ${round(area, 2)} sqft. For 2x2 tiles, about ${Math.ceil(area / 4)} tiles or ${Math.ceil(area / 16)} boxes if 4 tiles/box.`;
+  }
+  if (lower.includes("rcc") && nums.length >= 1) {
+    const area = nums[0];
+    const thickness = nums[1] || 5;
+    const volume = area * (thickness / 12);
+    return `RCC for ${area} sqft at ${thickness} inch: concrete ${round(volume, 2)} cft, cement ${round(volume / 5.5, 2)} bags, sand ${round(volume * 0.42, 2)} cft, aggregate ${round(volume * 0.84, 2)} cft.`;
+  }
+  if (lower.includes("waterproof") && nums.length >= 1) {
+    const area = nums[0];
+    return `Waterproofing ${area} sqft: cement about ${round(area / 90, 2)} bags, chemical about ${round(area / 100, 2)} liters, brick bat approx ${Math.ceil(area * 3 / 12 * 13.5)} bricks for 3 inch layer.`;
+  }
+  if (lower.includes("wire") || lower.includes("3bhk")) {
+    const area = nums[0] || 1200;
+    return `Approx wire for ${area} sqft / 3BHK: ${Math.ceil(area * 1.8 + 45 * 18)} meters. Final wire depends on point layout and DB position.`;
+  }
+  return "";
+}
+
+function detectSmartEntry(prompt, lower) {
+  const amount = extractAmount(prompt);
+  const qty = extractFirstNumber(prompt);
+  if (lower.includes("labour") && lower.includes("present")) {
+    const count = qty || 1;
+    return entryPreview("wages", `Add ${count} labour present today?`, {
+      date: today,
+      siteId: currentSiteIdForEntry(),
+      worker: `${count} Labour`,
+      phone: "",
+      workType: "Site work",
+      attendance: "Present",
+      days: count,
+      rate: number(state.settings.defaultHelperRate || 0),
+      amount: count * number(state.settings.defaultHelperRate || 0)
+    });
+  }
+  if ((lower.includes("bought") || lower.includes("purchase")) && (lower.includes("cement") || lower.includes("material"))) {
+    return entryPreview("materials", `Add material purchase ${qty || 1} cement bags for ${formatMoney(amount)}?`, {
+      id: makeId(),
+      date: today,
+      siteId: currentSiteIdForEntry(),
+      item: lower.includes("cement") ? "Cement" : "Material",
+      category: "Purchase",
+      unit: "Bag",
+      quantityReceived: qty || 1,
+      quantityUsed: 0,
+      supplier: "",
+      billNo: "",
+      amount
+    });
+  }
+  if (lower.includes("client paid") || lower.includes("payment received")) {
+    return entryPreview("payments", `Add client payment ${formatMoney(amount)}?`, {
+      id: makeId(),
+      date: today,
+      siteId: currentSiteIdForEntry(),
+      client: "",
+      mode: "Cash",
+      reference: "AI entry",
+      amount
+    });
+  }
+  if (lower.includes("completed") && (lower.includes("plaster") || lower.includes("sqft"))) {
+    return entryPreview("measurements", `Add completed plaster measurement ${qty || 0} sqft?`, {
+      id: makeId(),
+      date: today,
+      siteId: currentSiteIdForEntry(),
+      area: "AI plaster entry",
+      plasterSqft: qty || 0,
+      popSqft: 0,
+      tileSqft: 0,
+      waterproofingSqft: 0,
+      paintingSqft: 0,
+      electricalPoints: 0,
+      runningFeet: 0,
+      total: qty || 0,
+      notes: prompt
+    });
+  }
+  return null;
+}
+
+function entryPreview(collection, message, item) {
+  pendingAiEntry = { collection, item };
+  return {
+    confident: true,
+    message,
+    preview: { collection, item, message }
+  };
+}
+
+function showAiPreview(preview) {
+  const box = document.getElementById("aiPreview");
+  box.classList.remove("is-hidden");
+  box.innerHTML = `<strong>Preview Entry</strong><p>${escapeHtml(preview.message)}</p><pre>${escapeHtml(JSON.stringify(preview.item, null, 2))}</pre><div><button class="primary-btn" data-ai-save="1" type="button">Save Entry</button><button class="secondary-light-btn" data-ai-cancel="1" type="button">Cancel</button></div>`;
+}
+
+function clearAiPreview() {
+  pendingAiEntry = null;
+  const box = document.getElementById("aiPreview");
+  if (box) {
+    box.classList.add("is-hidden");
+    box.innerHTML = "";
+  }
+}
+
+function handleAiPreviewAction(event) {
+  if (event.target.closest("[data-ai-cancel]")) {
+    clearAiPreview();
+    return;
+  }
+  if (!event.target.closest("[data-ai-save]") || !pendingAiEntry) return;
+  const { collection, item } = pendingAiEntry;
+  const savedItem = { id: item.id || makeId(), ...item };
+  state[collection].push(savedItem);
+  saveState();
+  render();
+  clearAiPreview();
+  addAiMessage("assistant", "Entry saved successfully.");
+}
+
+function currentSiteIdForEntry() {
+  const selected = document.getElementById("siteFilter")?.value;
+  if (selected && selected !== "all") return selected;
+  return state.sites[0]?.id || "";
+}
+
+function extractAmount(text) {
+  const match = text.replace(/,/g, "").match(/₹\s*(\d+(\.\d+)?)|rs\.?\s*(\d+(\.\d+)?)|(\d+(\.\d+)?)(?=\s*(rupees|rs|₹))/i);
+  return number(match?.[1] || match?.[3] || match?.[5] || 0);
+}
+
+function extractFirstNumber(text) {
+  return number((text.match(/\d+(\.\d+)?/) || [0])[0]);
+}
+
+function startAiVoiceInput() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    addAiMessage("assistant", "Voice input is not supported in this browser. On iPhone, Safari support can vary.");
+    return;
+  }
+  speechRecognizer = new SpeechRecognition();
+  speechRecognizer.lang = "en-IN";
+  speechRecognizer.onresult = (event) => {
+    const text = event.results?.[0]?.[0]?.transcript || "";
+    document.getElementById("aiInput").value = text;
+  };
+  speechRecognizer.start();
+}
+
+function speakLastAiAnswer() {
+  const last = [...getAiHistory()].reverse().find((item) => item.role === "assistant");
+  if (!last || !window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  window.speechSynthesis.speak(new SpeechSynthesisUtterance(last.text));
 }
 
 function bindActions() {
@@ -1759,44 +2194,60 @@ function exportExcelReport() {
 }
 
 function exportPdfReport() {
-  const frame = document.getElementById("reportFrame");
-  frame.srcdoc = reportDocumentHtml();
+  setPrintableDocument(reportDocumentHtml(), "H&H SPACES Report");
   document.getElementById("reportModal").classList.remove("is-hidden");
 }
 
 function openCustomerBillPreview(billId) {
   const bill = state.customerBills.find((item) => item.id === billId);
   if (!bill) return;
-  const frame = document.getElementById("reportFrame");
-  frame.srcdoc = customerBillDocumentHtml(bill);
+  setPrintableDocument(customerBillDocumentHtml(bill), `Bill ${bill.billNo || ""}`.trim());
   document.querySelector("#reportModal strong").textContent = `Bill ${bill.billNo || ""}`.trim();
-  document.querySelector("#reportModal span").textContent = "Print or save customer bill as PDF";
+  document.querySelector("#reportModal span").textContent = "On iPhone, tap Print / Save PDF, then Share > Save to Files.";
   document.getElementById("reportModal").classList.remove("is-hidden");
 }
 
 function openQuotationPreview(quoteId) {
   const quote = state.tools.quotations.find((item) => item.id === quoteId);
   if (!quote) return;
-  const frame = document.getElementById("reportFrame");
-  frame.srcdoc = quotationDocumentHtml(quote);
+  setPrintableDocument(quotationDocumentHtml(quote), `Quotation ${quote.quoteNo || ""}`.trim());
   document.querySelector("#reportModal strong").textContent = `Quotation ${quote.quoteNo || ""}`.trim();
-  document.querySelector("#reportModal span").textContent = "Print or save quotation as PDF";
+  document.querySelector("#reportModal span").textContent = "On iPhone, tap Print / Save PDF, then Share > Save to Files.";
   document.getElementById("reportModal").classList.remove("is-hidden");
 }
 
+function setPrintableDocument(html, title) {
+  currentPrintableHtml = html;
+  currentPrintableTitle = title || "H&H SPACES Document";
+  document.getElementById("reportFrame").srcdoc = html;
+}
+
 function printReportPreview() {
-  const frame = document.getElementById("reportFrame");
-  if (!frame.srcdoc) {
-    frame.srcdoc = reportDocumentHtml();
+  if (!currentPrintableHtml) {
+    setPrintableDocument(reportDocumentHtml(), "H&H SPACES Report");
   }
-  frame.contentWindow?.focus();
-  frame.contentWindow?.print();
+  openPrintablePage(currentPrintableHtml, currentPrintableTitle);
+}
+
+function openPrintablePage(html, title) {
+  const printableHtml = html.replace("</body>", `<script>window.addEventListener('load',function(){setTimeout(function(){window.focus();window.print();},350);});<\/script></body>`);
+  const printWindow = window.open("", "_blank");
+  if (printWindow) {
+    printWindow.document.open();
+    printWindow.document.write(printableHtml);
+    printWindow.document.close();
+    return;
+  }
+  downloadFile(html, `${fileSafeName(title)}.html`, "text/html");
+  alert("iPhone blocked the print page. An HTML copy was downloaded. Open it, tap Share, then Print or Save to Files.");
 }
 
 function closeReportPreview() {
   document.getElementById("reportModal").classList.add("is-hidden");
   document.querySelector("#reportModal strong").textContent = "Report Preview";
   document.querySelector("#reportModal span").textContent = "Print or save as PDF";
+  currentPrintableHtml = "";
+  currentPrintableTitle = "H&H SPACES Report";
 }
 
 function customerBillDocumentHtml(bill) {
@@ -2303,6 +2754,14 @@ function linesToHtml(value) {
 
 function toTitleCase(value) {
   return String(value || "").toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function fileSafeName(value) {
+  return String(value || "hh-spaces-document")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "") || "hh-spaces-document";
 }
 
 function downloadFile(content, filename, type) {
