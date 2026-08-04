@@ -710,7 +710,7 @@
 }
 
 .primaryQuoteActions {
-  order: 2;
+  order: 6;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
@@ -721,31 +721,31 @@
 }
 
 .quoteControls {
-  order: 3;
+  order: 2;
 }
 
 .dimensionPanel {
-  order: 4;
+  order: 3;
 }
 
 .quoteResultGrid {
-  order: 5;
+  order: 4;
 }
 
 .customerBrief {
-  order: 6;
-}
-
-.engineCard {
   order: 7;
 }
 
-.costBrainPanel {
+.engineCard {
   order: 8;
 }
 
-.conditionPanel {
+.costBrainPanel {
   order: 9;
+}
+
+.conditionPanel {
+  order: 5;
 }
 
 .profitProtectionPanel {
@@ -2019,9 +2019,15 @@
 }
 
 @media (max-width: 760px) {
+  .stack {
+    gap: 14px;
+    padding-bottom: calc(160px + env(safe-area-inset-bottom));
+  }
+
   .hero {
     flex-direction: column;
     border-radius: 26px;
+    padding: 18px;
   }
 
   .heroMetric {
@@ -2117,6 +2123,64 @@
 
   .languageSwitch {
     width: 100%;
+  }
+
+  .exactCostBanner {
+    display: grid;
+    gap: 12px;
+    padding: 16px;
+  }
+
+  .exactCostBanner strong {
+    font-size: clamp(2rem, 11vw, 2.85rem);
+    line-height: 1;
+  }
+
+  .exactCostBanner p,
+  .exactCostBanner small {
+    overflow-wrap: anywhere;
+  }
+
+  .primaryQuoteActions {
+    position: static;
+    padding: 0;
+  }
+
+  .quoteCard,
+  .engineCard,
+  .costBrainPanel,
+  .conditionPanel,
+  .profitProtectionPanel,
+  .customerBrief,
+  .itemizedPanel,
+  .advancedCard,
+  .simpleStart,
+  .rateStatusPanel,
+  .aiPanel,
+  .rateCard,
+  .rateCardActive,
+  .field input,
+  .field select,
+  .searchBar input,
+  .searchBar select,
+  .assistantInput {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  .itemizedLines div,
+  .resultGrid div,
+  .boqSummary div,
+  .detailGrid div,
+  .engineQuoteStrip div,
+  .engineBandGrid div,
+  .costBrainGrid div,
+  .aiStatGrid div,
+  .aiStrategyGrid div,
+  .aiPlanGrid div,
+  .aiPrecisionStrip div,
+  .aiExplainGrid > div {
+    min-width: 0;
   }
 
   .engineDetails summary {

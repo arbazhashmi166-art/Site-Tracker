@@ -505,7 +505,6 @@ export function AppShell({ title, subtitle, children }: { title: string; subtitl
                 pathname === route.path || (route.path !== "/dashboard" && pathname.startsWith(route.path)) ? styles.navButtonActive : ""
               }`}
               type="button"
-              onPointerDown={() => go(route.path)}
               onClick={() => go(route.path)}
             >
               <AppIcon icon={route.icon} />

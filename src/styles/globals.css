@@ -73,6 +73,25 @@ body {
   -webkit-text-size-adjust: 100%;
 }
 
+@media (hover: none), (pointer: coarse) {
+  :root {
+    --app-blur: none;
+    --app-shadow: 0 10px 26px rgba(15, 23, 42, 0.08);
+    --app-shadow-strong: 0 18px 44px rgba(15, 23, 42, 0.14);
+    --app-shadow-soft: 0 6px 18px rgba(15, 23, 42, 0.06);
+  }
+
+  html,
+  body {
+    overscroll-behavior-y: auto;
+    scroll-behavior: auto;
+  }
+
+  body {
+    background: var(--app-bg);
+  }
+}
+
 body {
   font-family: var(--app-font-family);
   text-rendering: optimizeLegibility;

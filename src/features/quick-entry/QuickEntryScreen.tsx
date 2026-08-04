@@ -162,14 +162,14 @@ export function QuickEntryScreen() {
         <h2>{doneCount}/4</h2>
         <p>{selectedSite ? `${selectedSite.name}: ` : ""}Add attendance, expense, material, payment, progress, or extra work in one place.</p>
         <div className={styles.heroActions}>
-          <Button onPointerDown={() => go("/attendance?add=1")} onClick={() => go("/attendance?add=1")}>Start Attendance</Button>
-          <Button variant="secondary" onPointerDown={() => go("/expenses?add=1")} onClick={() => go("/expenses?add=1")}>Add Expense</Button>
+          <Button onClick={() => go("/attendance?add=1")}>Start Attendance</Button>
+          <Button variant="secondary" onClick={() => go("/expenses?add=1")}>Add Expense</Button>
         </div>
       </div>
 
       <div className={styles.statusGrid}>
         {todayStatus.map((item) => (
-          <button className={styles.statusCard} type="button" key={item.label} onPointerDown={() => go(item.path)} onClick={() => go(item.path)}>
+          <button className={styles.statusCard} type="button" key={item.label} onClick={() => go(item.path)}>
             <span>{item.label}</span>
             <strong>{item.done ? "Done" : "Add"}</strong>
             <Badge tone={statusTone(item.done)}>{item.done ? "Saved" : "Open"}</Badge>
@@ -200,7 +200,7 @@ export function QuickEntryScreen() {
         {engine.actions.length ? (
           <div className={styles.suggestionList}>
             {engine.actions.slice(0, 4).map((action) => (
-              <button className={styles.suggestion} type="button" key={action.id} onPointerDown={() => go(action.route)} onClick={() => go(action.route)}>
+              <button className={styles.suggestion} type="button" key={action.id} onClick={() => go(action.route)}>
                 <span>{action.category}</span>
                 <strong>{action.title}</strong>
                 <p>{action.description}</p>
@@ -217,7 +217,7 @@ export function QuickEntryScreen() {
           <CardHeader title={group.title} subtitle="Tap any card to open the correct entry screen." />
           <div className={styles.quickGrid}>
             {group.actions.map((action) => (
-              <button className={styles.quickCard} type="button" key={action.path} onPointerDown={() => go(action.path)} onClick={() => go(action.path)}>
+              <button className={styles.quickCard} type="button" key={action.path} onClick={() => go(action.path)}>
                 <AppIcon icon={action.icon} />
                 <span>
                   <strong>{action.label}</strong>

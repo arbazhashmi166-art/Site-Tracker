@@ -64,3 +64,11 @@
   display: inline-flex;
   align-items: center;
 }
+
+@media (hover: none), (pointer: coarse) {
+  .secondary,
+  .ghost {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}

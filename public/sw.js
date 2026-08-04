@@ -1,4 +1,4 @@
-const CACHE_NAME = "hh-spaces-v6";
+const CACHE_NAME = "hh-spaces-v7";
 const APP_SHELL = ["./", "./dashboard/", "./login/", "./manifest.json", "./offline.html", "./icons/icon.svg"];
 
 function sameOriginRequest(request) {

@@ -744,6 +744,82 @@
   color: var(--app-muted);
 }
 
+@media (hover: none), (pointer: coarse) {
+  .content {
+    padding: 12px 12px calc(172px + env(safe-area-inset-bottom));
+  }
+
+  .appHeader {
+    background: var(--app-bg);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  .topBar,
+  .iconButton,
+  .statusDock button,
+  .siteDock,
+  .adaptiveStrip,
+  .addButton,
+  .bottomNav,
+  .quickSheet,
+  .searchSheet {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  .topBar,
+  .siteDock,
+  .adaptiveStrip,
+  .bottomNav,
+  .quickSheet,
+  .searchSheet {
+    background: color-mix(in srgb, var(--app-surface) 96%, var(--app-bg));
+  }
+
+  .aiButton,
+  .addButton {
+    bottom: calc(102px + env(safe-area-inset-bottom));
+    min-height: 52px;
+    z-index: 43;
+  }
+
+  .aiButton {
+    right: max(12px, env(safe-area-inset-right));
+    padding: 0 15px;
+    box-shadow: 0 12px 26px rgba(49, 87, 255, 0.26);
+  }
+
+  .addButton {
+    left: max(12px, env(safe-area-inset-left));
+    padding: 0 13px;
+    box-shadow: var(--app-shadow-soft);
+  }
+
+  .bottomNav {
+    left: max(8px, env(safe-area-inset-left));
+    right: max(8px, env(safe-area-inset-right));
+    bottom: calc(8px + env(safe-area-inset-bottom));
+    min-height: 84px;
+    border-radius: 30px;
+    box-shadow: 0 -10px 28px rgba(15, 23, 42, 0.1);
+  }
+
+  .navButton {
+    min-height: 66px;
+    border-radius: 22px;
+  }
+
+  .navButton :global(.appIcon) {
+    width: 30px;
+    height: 30px;
+  }
+
+  .sheetBackdrop {
+    backdrop-filter: none;
+  }
+}
+
 @media (max-width: 360px) {
   .content {
     padding-inline: 12px;
